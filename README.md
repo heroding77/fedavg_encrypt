@@ -1,0 +1,1 @@
+This project is based on PyTorch 1.11.0 and Python 3.9.7. It uses a GPU, of course it can run without a GPU (it requires a simple modification of the GPU part of the code). The hyperparameters are wrapped in utils and can be invoked directly in utils.
