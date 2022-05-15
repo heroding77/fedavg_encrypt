@@ -50,6 +50,21 @@ def decrypt_vector(private_key, parameters):
     return parameters
 
 
+def add_noise(parameters, dp, dev): 
+    noise = None
+    # 不加噪声
+    if dp == 0:
+        return parameters
+    # 拉普拉斯噪声
+    elif dp == 1:
+        noise = torch.tensor(np.random.laplace(0, sigma, parameters.shape)).to(dev)
+    # 高斯噪声
+    else:
+        noise = torch.cuda.FloatTensor(parameters.shape).normal_(0, sigma)
+    
+    return parameters.add_(noise)
+
+
 if __name__=="__main__":
     
     # args = parser.parse_args()
@@ -101,7 +116,8 @@ if __name__=="__main__":
     for key, var in net.state_dict().items():
         global_parameters[key] = var.clone()
     
-    # 定义噪声的幅度
+    # 定义噪声的类型和幅度
+    dp = args['noise']
     sigma = args['sigma']
 
     # 生成密钥
@@ -128,20 +144,13 @@ if __name__=="__main__":
                 sum_parameters = {}
                 for key, var in local_parameters.items():
                     sum_parameters[key] = var.clone()
-                    # 高斯噪声
-                    # noise = torch.cuda.FloatTensor(sum_parameters[key].shape).normal_(0, sigma)
-                    # 拉普拉斯噪声
-                    noise = torch.tensor(np.random.laplace(0, sigma, sum_parameters[key].shape)).to(dev)
-                    sum_parameters[key].add_(noise)
+                    sum_parameters[key] = var.clone()
+                    sum_parameters[key] = add_noise(sum_parameters[key], dp, dev)
                     sum_parameters[key] = encrypt_vector(public_key, sum_parameters[key]).to(dev)
 
             else:
                 for key in sum_parameters:
-                    # 高斯噪声
-                    # noise = torch.cuda.FloatTensor(sum_parameters[key].shape).normal_(0, sigma)
-                    # 拉普拉斯噪声
-                    noise = torch.tensor(np.random.laplace(0, sigma, sum_parameters[key].shape)).to(dev)
-                    sum_parameters[key] = sum_parameters[key] + encrypt_vector(public_key, local_parameters[key].add_(noise)).to(dev)
+                    sum_parameters[key] = sum_parameters[key] + encrypt_vector(public_key, add_noise(local_parameters[key], dp, dev)).to(dev)
 
         # 更新全局梯度参数
         for var in global_parameters:
