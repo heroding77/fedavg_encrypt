@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch import optim
 from Models import Mnist_2NN, Mnist_CNN
 from clients import ClientsGroup, client
-import paillier
+from phe import paillier
 
 
 		
@@ -166,28 +166,28 @@ if __name__=="__main__":
                 sum_accu = 0
                 num = 0
                 # 遍历每个测试数据
-                # for data, label in testDataLoader:
-                #     # 转成gpu数据
-                #     data, label = data.to(dev), label.to(dev)
-                #     # 预测（返回结果是概率向量）
-                #     preds = net(data)
-                #     # 取最大概率label
-                #     preds = torch.argmax(preds, dim=1)               
-                #     sum_accu += (preds == label).float().mean()
-                #     num += 1
-                # print('accuracy: {}'.format(sum_accu / num))
-
-                # 遍历每个训练数据
-                for data, label in trainDataLoader:
+                for data, label in testDataLoader:
                     # 转成gpu数据
                     data, label = data.to(dev), label.to(dev)
                     # 预测（返回结果是概率向量）
                     preds = net(data)
                     # 取最大概率label
-                    preds = torch.argmax(preds, dim=1)              
+                    preds = torch.argmax(preds, dim=1)               
                     sum_accu += (preds == label).float().mean()
                     num += 1
                 print('accuracy: {}'.format(sum_accu / num))
+
+                # 遍历每个训练数据
+                # for data, label in trainDataLoader:
+                #     # 转成gpu数据
+                #     data, label = data.to(dev), label.to(dev)
+                #     # 预测（返回结果是概率向量）
+                #     preds = net(data)
+                #     # 取最大概率label
+                #     preds = torch.argmax(preds, dim=1)              
+                #     sum_accu += (preds == label).float().mean()
+                #     num += 1
+                # print('accuracy: {}'.format(sum_accu / num))
 
         # 根据格式和给定轮次保存参数信息
         if (i + 1) % args['save_freq'] == 0:

@@ -1,7 +1,7 @@
 {
 	"gpu" : "0",
 	
-	"num_of_clients" : 10,
+	"num_of_clients" : 1,
 	
 	"cfraction" : 1,
 	
