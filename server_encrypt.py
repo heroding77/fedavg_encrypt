@@ -145,7 +145,7 @@ if __name__=="__main__":
 
             else:
                 for key in sum_parameters:
-                    sum_parameters[key] = np.sum(sum_parameters[key], encrypt_vector(public_key, add_noise(local_parameters[key], dp, dev)))
+                    sum_parameters[key] = np.add(sum_parameters[key], encrypt_vector(public_key, add_noise(local_parameters[key], dp, dev)))
 
         # 更新全局梯度参数
         for var in global_parameters:
