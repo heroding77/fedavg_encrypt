@@ -33,22 +33,16 @@ def test_mkdir(path):
     if not os.path.isdir(path):
         os.mkdir(path)
 
+# torch转list加密
 def encrypt_vector(public_key, parameters):
-    parameters_shape = parameters.shape
     parameters = parameters.flatten(0).cpu().numpy().tolist()
-    for parameter in parameters:
-        public_key.encrypt(parameter)
-    parameters = torch.reshape(torch.Tensor(parameters), parameters_shape)
+    parameters = [public_key.encrypt(parameter) for parameter in parameters]
     return parameters
     
+# list解密
 def decrypt_vector(private_key, parameters):
-    parameters_shape = parameters.shape
-    parameters = parameters.flatten(0).cpu().numpy().tolist()
-    for parameter in parameters:
-        private_key.decrypt(parameter)
-    parameters = torch.reshape(torch.Tensor(parameters), parameters_shape)
+    parameters = [private_key.decrypt(parameter) for parameter in parameters]
     return parameters
-
 
 def add_noise(parameters, dp, dev): 
     noise = None
@@ -66,9 +60,6 @@ def add_noise(parameters, dp, dev):
 
 
 if __name__=="__main__":
-    
-    # args = parser.parse_args()
-    # args = args.__dict__
 
     # 定义解析器
     parser = argparse.ArgumentParser(description='FedAvg')
@@ -133,6 +124,9 @@ if __name__=="__main__":
 
         sum_parameters = None
 
+        # 记录全局参数的shape
+        parameters_shape = None
+
         # 可视化进度条对选中参与方local_epoch
         for client in tqdm(clients_in_comm):
             # 本地梯度下降
@@ -142,20 +136,22 @@ if __name__=="__main__":
             # 初始化sum_parameters
             if sum_parameters is None:
                 sum_parameters = {}
+                parameters_shape = {}
                 for key, var in local_parameters.items():
                     sum_parameters[key] = var.clone()
-                    sum_parameters[key] = var.clone()
+                    parameters_shape[key] = var.shape
                     sum_parameters[key] = add_noise(sum_parameters[key], dp, dev)
-                    sum_parameters[key] = encrypt_vector(public_key, sum_parameters[key]).to(dev)
+                    sum_parameters[key] = encrypt_vector(public_key, sum_parameters[key])
 
             else:
                 for key in sum_parameters:
-                    sum_parameters[key] = sum_parameters[key] + encrypt_vector(public_key, add_noise(local_parameters[key], dp, dev)).to(dev)
+                    sum_parameters[key] = np.sum(sum_parameters[key], encrypt_vector(public_key, add_noise(local_parameters[key], dp, dev)))
 
         # 更新全局梯度参数
         for var in global_parameters:
-            sum_parameters[var] = decrypt_vector(private_key, sum_parameters[var]).to(dev)
-            global_parameters[var] = (sum_parameters[var] / num_in_comm)
+            sum_parameters[var] = decrypt_vector(private_key, sum_parameters[var])
+            sum_parameters[var] = torch.reshape(torch.Tensor(sum_parameters[var]), parameters_shape[var])
+            global_parameters[var] = (sum_parameters[var].to(dev) / num_in_comm)
         
         # 不进行计算图构建（无需反向传播）
         with torch.no_grad():
