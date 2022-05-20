@@ -1,3 +1,4 @@
+from boto import TOO_LONG_DNS_NAME_COMP
 import gmpy2 as gy
 import random
 import time
@@ -73,5 +74,4 @@ if __name__ == "__main__":
     print("Ciphertext:", ciphertext)
     deciphertext = pai.decipher(ciphertext)
     print("Deciphertext: ", deciphertext)
-    
     

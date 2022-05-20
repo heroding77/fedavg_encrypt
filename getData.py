@@ -45,6 +45,7 @@ class GetDataSet(object):
         # mnist黑白图片通道为1
         assert train_images.shape[3] == 1
         assert test_images.shape[3] == 1
+        # 图片展平
         train_images = train_images.reshape(train_images.shape[0], train_images.shape[1] * train_images.shape[2])
         test_images = test_images.reshape(test_images.shape[0], test_images.shape[1] * test_images.shape[2])
         
@@ -67,8 +68,6 @@ class GetDataSet(object):
             order = np.argsort(labels)
             self.train_data = train_images[order]
             self.train_label = train_labels[order]
-
-
 
         self.test_data = test_images
         self.test_label = test_labels
