@@ -1,9 +1,9 @@
 {
 	"gpu" : "0",
 
-	"type" : "cifar",
+	"type" : "mnist",
 	
-	"num_of_clients" : 20,
+	"num_of_clients" : 2,
 	
 	"cfraction" : 1,
 	
@@ -11,7 +11,7 @@
 	
 	"batch_size" : 100,
 	
-	"model_name" : "cifar_cnn",
+	"model_name" : "mnist_cnn",
 	
 	"learning_rate" : 0.005,
 	
@@ -19,7 +19,7 @@
 	
 	"save_freq" : 1000,
 	
-	"num_comm" : 10,
+	"num_comm" : 5,
 	
 	"save_path" : "./checkpoints",
 	
