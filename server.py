@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import optim
-from Models import Mnist_2NN, Mnist_CNN
+from Models import Cifar_2NN, Cifar_CNN, Mnist_2NN, Mnist_CNN, RestNet18
 from clients import ClientsGroup, client
 	
 
@@ -45,12 +45,18 @@ def add_noise(parameters, dp, dev):
     return parameters.add_(noise)
 
 
+# 标签one-hot编码
+def dense_to_one_hot(labels_dense, num_classes=10):
+    """Convert class labels from scalars to one-hot vectors."""
+    num_labels = labels_dense.shape[0]
+    index_offset = np.arange(num_labels) * num_classes
+    labels_one_hot = np.zeros((num_labels, num_classes))
+    labels_one_hot.flat[index_offset + labels_dense.ravel()] = 1
+    return labels_one_hot
+
 
 if __name__=="__main__":
     
-    # args = parser.parse_args()
-    # args = args.__dict__
-
     # 定义解析器
     parser = argparse.ArgumentParser(description='FedAvg')
     parser.add_argument('-c', '--conf', dest='conf')
@@ -73,6 +79,12 @@ if __name__=="__main__":
         net = Mnist_2NN()
     elif args['model_name'] == 'mnist_cnn':
         net = Mnist_CNN()
+    elif args['model_name'] == 'cifar_cnn':
+        net = Cifar_CNN()
+    elif args['model_name'] == 'resnet18':
+        net = RestNet18()
+    elif args['model_name'] == 'cifar_2nn':
+        net = Cifar_2NN()  
 
     # 如果gpu设备不止一个，并行计算
     if torch.cuda.device_count() > 1:
@@ -84,8 +96,11 @@ if __name__=="__main__":
     loss_func = F.cross_entropy
     opti = optim.Adam(net.parameters(), lr=args['learning_rate'])
 
+    # 定义数据集
+    type = args['type']
+
     # 定义多个参与方，导入训练、测试数据集
-    myClients = ClientsGroup('mnist', args['IID'], args['num_of_clients'], dev)
+    myClients = ClientsGroup(type, args['IID'], args['num_of_clients'], dev)
     testDataLoader = myClients.test_data_loader
     trainDataLoader = myClients.train_data_loader
 
@@ -100,6 +115,13 @@ if __name__=="__main__":
     # 定义噪声的类型和幅度
     dp = args['noise']
     sigma = args['sigma']
+
+    # 保存训练集accuracy和验证集accuracy
+    train_acc = []
+    val_acc = []
+    
+    # 保存训练集loss
+    train_loss = []
 
     # 全局迭代轮次
     for i in range(args['num_comm']):
@@ -130,6 +152,7 @@ if __name__=="__main__":
         # 更新全局梯度参数
         for var in global_parameters:
             global_parameters[var] = (sum_parameters[var] / num_in_comm)
+
         
         # 不进行计算图构建（无需反向传播）
         with torch.no_grad():
@@ -139,7 +162,7 @@ if __name__=="__main__":
                 net.load_state_dict(global_parameters, strict=True)
                 sum_accu = 0
                 num = 0
-                # # 遍历每个测试数据
+                # 遍历每个测试数据
                 for data, label in testDataLoader:
                     # 转成gpu数据
                     data, label = data.to(dev), label.to(dev)
@@ -149,19 +172,28 @@ if __name__=="__main__":
                     preds = torch.argmax(preds, dim=1)               
                     sum_accu += (preds == label).float().mean()
                     num += 1
-                print('accuracy: {}'.format(sum_accu / num))
+                print('val_accuracy: {}'.format(sum_accu / num))
+                val_acc.append((sum_accu / num).cpu())
 
+                total_loss = 0
                 # 遍历每个训练数据
-                # for data, label in trainDataLoader:
-                #     # 转成gpu数据
-                #     data, label = data.to(dev), label.to(dev)
-                #     # 预测（返回结果是概率向量）
-                #     preds = net(data)
-                #     # 取最大概率label
-                #     preds = torch.argmax(preds, dim=1)              
-                #     sum_accu += (preds == label).float().mean()
-                #     num += 1
-                # print('accuracy: {}'.format(sum_accu / num))
+                for data, label in trainDataLoader:
+                    # 转成gpu数据
+                    data, label = data.to(dev), label.to(dev)
+                    # 预测（返回结果是概率向量）
+                    preds = net(data)
+                    target = dense_to_one_hot(label.cpu().numpy())
+                    target = torch.tensor(target).to(dev)
+                    total_loss += torch.nn.functional.cross_entropy(preds, target,
+                                                    reduction='sum').item()
+                    # 取最大概率label
+                    preds = torch.argmax(preds, dim=1)              
+                    sum_accu += (preds == label).float().mean()
+                    num += 1
+                print('train_accuracy: {}'.format(sum_accu / num))
+                total_loss = total_loss / num
+                train_acc.append((sum_accu / num).cpu())
+                train_loss.append(total_loss)
 
         # 根据格式和给定轮次保存参数信息
         if (i + 1) % args['save_freq'] == 0:
@@ -172,4 +204,8 @@ if __name__=="__main__":
                                                                                                 args['learning_rate'],
                                                                                                 args['num_of_clients'],
                                                                                                 args['cfraction'])))
+    # 保存运行结果
+    np.savetxt("train_acc.csv", train_acc)
+    np.savetxt("val_acc.csv", val_acc)
+    np.savetxt("train_loss.csv", train_loss)
 

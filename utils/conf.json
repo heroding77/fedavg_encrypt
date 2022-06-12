@@ -1,7 +1,9 @@
 {
 	"gpu" : "0",
+
+	"type" : "cifar",
 	
-	"num_of_clients" : 2,
+	"num_of_clients" : 20,
 	
 	"cfraction" : 1,
 	
@@ -9,7 +11,7 @@
 	
 	"batch_size" : 100,
 	
-	"model_name" : "mnist_cnn",
+	"model_name" : "cifar_cnn",
 	
 	"learning_rate" : 0.005,
 	
@@ -23,8 +25,8 @@
 	
 	"IID" : true,
 
-	"sigma" : 0.1,
-
+	"sigma" : 0.02,
+	
 	"noise" : 1
 	
 }

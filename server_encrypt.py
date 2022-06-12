@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import optim
-from Models import Mnist_2NN, Mnist_CNN
+from Models import Cifar_2NN, Cifar_CNN, Mnist_2NN, Mnist_CNN, RestNet18
 from clients import ClientsGroup, client
 from phe import paillier
 
@@ -83,6 +83,12 @@ if __name__=="__main__":
         net = Mnist_2NN()
     elif args['model_name'] == 'mnist_cnn':
         net = Mnist_CNN()
+    elif args['model_name'] == 'cifar_cnn':
+        net = Cifar_CNN()
+    elif args['model_name'] == 'resnet18':
+        net = RestNet18()
+    elif args['model_name'] == 'cifar_2nn':
+        net = Cifar_2NN()  
 
     # 如果gpu设备不止一个，并行计算
     if torch.cuda.device_count() > 1:
@@ -94,8 +100,11 @@ if __name__=="__main__":
     loss_func = F.cross_entropy
     opti = optim.Adam(net.parameters(), lr=args['learning_rate'])
 
+    # 定义数据集
+    type = args['type']
+
     # 定义多个参与方，导入训练、测试数据集
-    myClients = ClientsGroup('mnist', args['IID'], args['num_of_clients'], dev)
+    myClients = ClientsGroup(type, args['IID'], args['num_of_clients'], dev)
     testDataLoader = myClients.test_data_loader
     trainDataLoader = myClients.train_data_loader
 
@@ -171,19 +180,19 @@ if __name__=="__main__":
                     preds = torch.argmax(preds, dim=1)               
                     sum_accu += (preds == label).float().mean()
                     num += 1
-                print('accuracy: {}'.format(sum_accu / num))
+                print('val_accuracy: {}'.format(sum_accu / num))
 
                 # 遍历每个训练数据
-                # for data, label in trainDataLoader:
-                #     # 转成gpu数据
-                #     data, label = data.to(dev), label.to(dev)
-                #     # 预测（返回结果是概率向量）
-                #     preds = net(data)
-                #     # 取最大概率label
-                #     preds = torch.argmax(preds, dim=1)              
-                #     sum_accu += (preds == label).float().mean()
-                #     num += 1
-                # print('accuracy: {}'.format(sum_accu / num))
+                for data, label in trainDataLoader:
+                    # 转成gpu数据
+                    data, label = data.to(dev), label.to(dev)
+                    # 预测（返回结果是概率向量）
+                    preds = net(data)
+                    # 取最大概率label
+                    preds = torch.argmax(preds, dim=1)              
+                    sum_accu += (preds == label).float().mean()
+                    num += 1
+                print('train_accuracy: {}'.format(sum_accu / num))
 
         # 根据格式和给定轮次保存参数信息
         if (i + 1) % args['save_freq'] == 0:
