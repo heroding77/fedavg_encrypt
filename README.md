@@ -20,4 +20,4 @@ python server_encrypt.py -c ./utils/conf.json
 ```
 
 ## 3. Other documents
-
+The encryption algorithm in the new_paillier.py file is used for encrypting and decrypting text information. The test.py file is used to test the usage of Paillier and can be ignored.
